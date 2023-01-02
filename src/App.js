@@ -11,7 +11,6 @@ const settings = {
   network: Network.ETH_MAINNET,
 };
 
-
 // In this week's lessons we used ethers.js. Here we are using the
 // Alchemy SDK is an umbrella library with several different packages.
 //
@@ -20,17 +19,83 @@ const settings = {
 const alchemy = new Alchemy(settings);
 
 function App() {
-  const [blockNumber, setBlockNumber] = useState();
+  const [blocks, setBlocks] = useState([]);
+  const [selectedBlock, setSelectedBlock] = useState();
+  const [selectedBlockTransactions, setSelectedBlockTransactions] = useState([]);
 
   useEffect(() => {
-    async function getBlockNumber() {
-      setBlockNumber(await alchemy.core.getBlockNumber());
+    async function getBlocks() {
+      const blocks = await alchemy.core.getBlock();
+      setBlocks(blocks);
     }
 
-    getBlockNumber();
-  });
+    getBlocks();
+  }, []);
 
-  return <div className="App">Block Number: {blockNumber}</div>;
+  useEffect(() => {
+    async function getBlockWithTransactions(blockNumber) {
+      const block = await alchemy.core.getBlockWithTransactions(blockNumber);
+      const transactions = block.transactions;
+
+      const transactionReceipts = await Promise.all(
+        transactions.map(async tx => {
+          const receipt = await alchemy.core.getTransactionReceipt(tx.hash);
+          return { ...tx, receipt };
+        })
+      );
+      setSelectedBlockTransactions(transactionReceipts);
+    }
+
+    // if block is selected, get the block with transactions
+    if (selectedBlock) {
+      getBlockWithTransactions(selectedBlock.number);
+    }
+  }, [selectedBlock]);
+
+  const handleBlockSelect = (block) => {
+    setSelectedBlock(block);
+    setSelectedBlockTransactions(block.transactions);
+  };
+
+  return (
+    <div className="Block Explorer">
+      <div>
+        <h1>Block Explorer</h1>
+      </div>
+
+      {blocks.length > 0 ? (
+        <div>
+          {blocks.map((block) => (
+            <div key={block.number}>
+              <button onClick={() => handleBlockSelect(block)}>
+                Block: {block.number}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p>No blocks to display</p>
+      )}
+
+      {selectedBlock ? (
+        <div>
+          <h2>Block Details</h2>
+          <p>Number: {selectedBlock.number}</p>
+          <p>Hash: {selectedBlock.hash}</p>
+          <h3>Transactions</h3>
+          {selectedBlockTransactions.map((tx) => (
+            <div key={tx.hash}>
+              Transaction: {tx.hash}
+              <br />
+              Receipt: {JSON.stringify(tx.receipt)}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p>No block selected</p>
+      )}
+    </div>
+  );
 }
 
 export default App;
