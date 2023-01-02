@@ -11,6 +11,7 @@ const settings = {
   network: Network.ETH_MAINNET,
 };
 
+
 // In this week's lessons we used ethers.js. Here we are using the
 // Alchemy SDK is an umbrella library with several different packages.
 //
@@ -19,83 +20,64 @@ const settings = {
 const alchemy = new Alchemy(settings);
 
 function App() {
-  const [blocks, setBlocks] = useState([]);
-  const [selectedBlock, setSelectedBlock] = useState();
-  const [selectedBlockTransactions, setSelectedBlockTransactions] = useState([]);
+  const [blockNumber, setBlockNumber] = useState();
 
+  const [blockDetails, setBlockDetails] = useState();
+  const [blockWithTransactions, setBlockWithTransactions] = useState();
+
+  // useEffect: use getBlockNumber() from alchemy.core
   useEffect(() => {
-    async function getBlocks() {
-      const blocks = await alchemy.core.getBlock();
-      setBlocks(blocks);
+    async function getBlockNumber() {
+      // Call the alchemy.core.getBlockNumber method to retrieve the current block number from the Ethereum blockchain
+      const blockNumber = await alchemy.core.getBlockNumber()
+  
+      // Update the component's state with the current block number
+      console.log("blockNumber: ", blockNumber)
+      setBlockNumber(blockNumber);
+    }  
+    // Call the getBlockNumber function
+    getBlockNumber();
+    
+    async function getBlock() {
+      // Call the alchemy.core.getBlock method to retrieve the details of the blockNumber
+      const blockDetails = await alchemy.core.getBlock(blockNumber);
+
+      // Update the component's state with the current block number
+      console.log("blockDetails: ", blockDetails)
+      setBlockDetails(blockDetails.transactions);
     }
+    // Call the getBlock function
+    getBlock();
 
-    getBlocks();
-  }, []);
+    async function getBlockWithTransactions() {
+      // Call the alchemy.core.getBlockWithTransactions method to retrieve the details of the blockNumber
+      const blockWithTransactions = await alchemy.core.getBlockWithTransactions(blockNumber);
 
-  useEffect(() => {
-    async function getBlockWithTransactions(blockNumber) {
-      const block = await alchemy.core.getBlockWithTransactions(blockNumber);
-      const transactions = block.transactions;
-
-      const transactionReceipts = await Promise.all(
-        transactions.map(async tx => {
-          const receipt = await alchemy.core.getTransactionReceipt(tx.hash);
-          return { ...tx, receipt };
-        })
-      );
-      setSelectedBlockTransactions(transactionReceipts);
+      // Update the component's state with the current block number
+      console.log("transaction details: ", blockWithTransactions.transactions)
+      setBlockWithTransactions(blockWithTransactions.transactions.length);
     }
+    // Call the getBlockWithTransactions function
+    getBlockWithTransactions();
 
-    // if block is selected, get the block with transactions
-    if (selectedBlock) {
-      getBlockWithTransactions(selectedBlock.number);
-    }
-  }, [selectedBlock]);
+  }, [blockNumber]);  // The second argument to useEffect is an array of dependencies, which can be left empty in this case because the effect does not depend on any values from props or state
 
-  const handleBlockSelect = (block) => {
-    setSelectedBlock(block);
-    setSelectedBlockTransactions(block.transactions);
-  };
-
+  
   return (
-    <div className="Block Explorer">
-      <div>
-        <h1>Block Explorer</h1>
-      </div>
+    <div className="blockexplorer-container">
 
-      {blocks.length > 0 ? (
-        <div>
-          {blocks.map((block) => (
-            <div key={block.number}>
-              <button onClick={() => handleBlockSelect(block)}>
-                Block: {block.number}
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p>No blocks to display</p>
-      )}
+      <h1>Block Explorer</h1>
+        <div className="App">
+          <p>Block Number (getBlockNumber): { blockNumber }</p>
+          <p>Block Details (getBlock): { blockDetails }</p>
+          <p>Block with Transactions (getBlockWithTransactions): { blockWithTransactions }</p>
+        </div>;
+      
 
-      {selectedBlock ? (
-        <div>
-          <h2>Block Details</h2>
-          <p>Number: {selectedBlock.number}</p>
-          <p>Hash: {selectedBlock.hash}</p>
-          <h3>Transactions</h3>
-          {selectedBlockTransactions.map((tx) => (
-            <div key={tx.hash}>
-              Transaction: {tx.hash}
-              <br />
-              Receipt: {JSON.stringify(tx.receipt)}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p>No block selected</p>
-      )}
+
+
     </div>
-  );
+  )
 }
 
 export default App;
